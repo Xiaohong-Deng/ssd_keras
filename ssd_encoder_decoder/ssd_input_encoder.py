@@ -22,6 +22,7 @@ import numpy as np
 from bounding_box_utils.bounding_box_utils import iou, convert_coordinates
 from ssd_encoder_decoder.matching_utils import match_bipartite_greedy, match_multi
 
+
 class SSDInputEncoder:
     '''
     Transforms ground truth labels for object detection in images
@@ -143,17 +144,17 @@ class SSDInputEncoder:
             raise ValueError("Either `min_scale` and `max_scale` or `scales` need to be specified.")
 
         if scales:
-            if (len(scales) != predictor_sizes.shape[0] + 1): # Must be two nested `if` statements since `list` and `bool` cannot be combined by `&`
-                raise ValueError("It must be either scales is None or len(scales) == len(predictor_sizes)+1, but len(scales) == {} and len(predictor_sizes)+1 == {}".format(len(scales), len(predictor_sizes)+1))
+            if (len(scales) != predictor_sizes.shape[0] + 1):  # Must be two nested `if` statements since `list` and `bool` cannot be combined by `&`
+                raise ValueError("It must be either scales is None or len(scales) == len(predictor_sizes)+1, but len(scales) == {} and len(predictor_sizes)+1 == {}".format(len(scales), len(predictor_sizes) + 1))
             scales = np.array(scales)
             if np.any(scales <= 0):
                 raise ValueError("All values in `scales` must be greater than 0, but the passed list of scales is {}".format(scales))
-        else: # If no list of scales was passed, we need to make sure that `min_scale` and `max_scale` are valid values.
+        else:  # If no list of scales was passed, we need to make sure that `min_scale` and `max_scale` are valid values.
             if not 0 < min_scale <= max_scale:
                 raise ValueError("It must be 0 < min_scale <= max_scale, but it is min_scale = {} and max_scale = {}".format(min_scale, max_scale))
 
         if not (aspect_ratios_per_layer is None):
-            if (len(aspect_ratios_per_layer) != predictor_sizes.shape[0]): # Must be two nested `if` statements since `list` and `bool` cannot be combined by `&`
+            if (len(aspect_ratios_per_layer) != predictor_sizes.shape[0]):  # Must be two nested `if` statements since `list` and `bool` cannot be combined by `&`
                 raise ValueError("It must be either aspect_ratios_per_layer is None or len(aspect_ratios_per_layer) == len(predictor_sizes), but len(aspect_ratios_per_layer) == {} and len(predictor_sizes) == {}".format(len(aspect_ratios_per_layer), len(predictor_sizes)))
             for aspect_ratios in aspect_ratios_per_layer:
                 if np.any(np.array(aspect_ratios) <= 0):
@@ -185,7 +186,7 @@ class SSDInputEncoder:
 
         self.img_height = img_height
         self.img_width = img_width
-        self.n_classes = n_classes + 1 # + 1 for the background class
+        self.n_classes = n_classes + 1  # + 1 for the background class
         self.predictor_sizes = predictor_sizes
         self.min_scale = min_scale
         self.max_scale = max_scale
@@ -193,7 +194,7 @@ class SSDInputEncoder:
         # `min_scale` and `max_scale`. If an explicit list of `scales` is given, however,
         # then it takes precedent over `min_scale` and `max_scale`.
         if (scales is None):
-            self.scales = np.linspace(self.min_scale, self.max_scale, len(self.predictor_sizes)+1)
+            self.scales = np.linspace(self.min_scale, self.max_scale, len(self.predictor_sizes) + 1)
         else:
             # If a list of scales is given explicitly, we'll use that instead of computing it from `min_scale` and `max_scale`.
             self.scales = scales
@@ -250,21 +251,21 @@ class SSDInputEncoder:
         # For each predictor layer (i.e. for each scaling factor) the tensors for that layer's
         # anchor boxes will have the shape `(feature_map_height, feature_map_width, n_boxes, 4)`.
 
-        self.boxes_list = [] # This will store the anchor boxes for each predicotr layer.
+        self.boxes_list = []  # This will store the anchor boxes for each predicotr layer.
 
         # The following lists just store diagnostic information. Sometimes it's handy to have the
         # boxes' center points, heights, widths, etc. in a list.
-        self.wh_list_diag = [] # Box widths and heights for each predictor layer
-        self.steps_diag = [] # Horizontal and vertical distances between any two boxes for each predictor layer
-        self.offsets_diag = [] # Offsets for each predictor layer
-        self.centers_diag = [] # Anchor box center points as `(cy, cx)` for each predictor layer
+        self.wh_list_diag = []  # Box widths and heights for each predictor layer
+        self.steps_diag = []  # Horizontal and vertical distances between any two boxes for each predictor layer
+        self.offsets_diag = []  # Offsets for each predictor layer
+        self.centers_diag = []  # Anchor box center points as `(cy, cx)` for each predictor layer
 
         # Iterate over all predictor layers and compute the anchor boxes for each one.
         for i in range(len(self.predictor_sizes)):
             boxes, center, wh, step, offset = self.generate_anchor_boxes_for_layer(feature_map_size=self.predictor_sizes[i],
                                                                                    aspect_ratios=self.aspect_ratios[i],
                                                                                    this_scale=self.scales[i],
-                                                                                   next_scale=self.scales[i+1],
+                                                                                   next_scale=self.scales[i + 1],
                                                                                    this_steps=self.steps[i],
                                                                                    this_offsets=self.offsets[i],
                                                                                    diagnostics=True)
@@ -320,25 +321,26 @@ class SSDInputEncoder:
         # a ground truth match and for which the maximal IoU overlap with any ground truth box is less
         # than or equal to `neg_iou_limit` will be a negative (background) box.
 
-        y_encoded[:, :, self.background_id] = 1 # All boxes are background boxes by default.
-        n_boxes = y_encoded.shape[1] # The total number of boxes that the model predicts per batch item
-        class_vectors = np.eye(self.n_classes) # An identity matrix that we'll use as one-hot class vectors
+        y_encoded[:, :, self.background_id] = 1  # All boxes are background boxes by default.
+        n_boxes = y_encoded.shape[1]  # The total number of boxes that the model predicts per batch item
+        class_vectors = np.eye(self.n_classes)  # An identity matrix that we'll use as one-hot class vectors
 
-        for i in range(batch_size): # For each batch item...
+        for i in range(batch_size):  # For each batch item...
 
-            if ground_truth_labels[i].size == 0: continue # If there is no ground truth for this batch item, there is nothing to match.
-            labels = ground_truth_labels[i].astype(np.float) # The labels for this batch item
+            if ground_truth_labels[i].size == 0:
+              continue  # If there is no ground truth for this batch item, there is nothing to match.
+            labels = ground_truth_labels[i].astype(np.float)  # The labels for this batch item
 
             # Check for degenerate ground truth bounding boxes before attempting any computations.
-            if np.any(labels[:,[xmax]] - labels[:,[xmin]] <= 0) or np.any(labels[:,[ymax]] - labels[:,[ymin]] <= 0):
+            if np.any(labels[:, [xmax]] - labels[:, [xmin]] <= 0) or np.any(labels[:, [ymax]] - labels[:, [ymin]] <= 0):
                 raise DegenerateBoxError("SSDInputEncoder detected degenerate ground truth bounding boxes for batch item {} with bounding boxes {}, ".format(i, labels) +
                                          "i.e. bounding boxes where xmax <= xmin and/or ymax <= ymin. Degenerate ground truth " +
                                          "bounding boxes will lead to NaN errors during the training.")
 
             # Maybe normalize the box coordinates.
             if self.normalize_coords:
-                labels[:,[ymin,ymax]] /= self.img_height # Normalize ymin and ymax relative to the image height
-                labels[:,[xmin,xmax]] /= self.img_width # Normalize xmin and xmax relative to the image width
+                labels[:, [ymin, ymax]] /= self.img_height  # Normalize ymin and ymax relative to the image height
+                labels[:, [xmin, xmax]] /= self.img_width  # Normalize xmin and xmax relative to the image width
 
             # Maybe convert the box coordinate format.
             if self.coords == 'centroids':
@@ -346,12 +348,12 @@ class SSDInputEncoder:
             elif self.coords == 'minmax':
                 labels = convert_coordinates(labels, start_index=xmin, conversion='corners2minmax')
 
-            classes_one_hot = class_vectors[labels[:, class_id].astype(np.int)] # The one-hot class IDs for the ground truth boxes of this batch item
-            labels_one_hot = np.concatenate([classes_one_hot, labels[:, [xmin,ymin,xmax,ymax]]], axis=-1) # The one-hot version of the labels for this batch item
+            classes_one_hot = class_vectors[labels[:, class_id].astype(np.int)]  # The one-hot class IDs for the ground truth boxes of this batch item
+            labels_one_hot = np.concatenate([classes_one_hot, labels[:, [xmin, ymin, xmax, ymax]]], axis=-1)  # The one-hot version of the labels for this batch item
 
             # Compute the IoU similarities between all anchor boxes and all ground truth boxes for this batch item.
             # This is a matrix of shape `(num_ground_truth_boxes, num_anchor_boxes)`.
-            similarities = iou(labels[:,[xmin,ymin,xmax,ymax]], y_encoded[i,:,-12:-8], coords=self.coords, mode='outer_product', border_pixels=self.border_pixels)
+            similarities = iou(labels[:, [xmin, ymin, xmax, ymax]], y_encoded[i, :, -12:-8], coords=self.coords, mode='outer_product', border_pixels=self.border_pixels)
 
             # First: Do bipartite matching, i.e. match each ground truth box to the one anchor box with the highest IoU.
             #        This ensures that each ground truth box will have at least one good match.
@@ -412,7 +414,7 @@ class SSDInputEncoder:
         if diagnostics:
             # Here we'll save the matched anchor boxes (i.e. anchor boxes that were matched to a ground truth box, but keeping the anchor box coordinates).
             y_matched_anchors = np.copy(y_encoded)
-            y_matched_anchors[:,:,-12:-8] = 0 # Keeping the anchor box coordinates means setting the offsets to zero.
+            y_matched_anchors[:, :, -12:-8] = 0  # Keeping the anchor box coordinates means setting the offsets to zero.
             return y_encoded, y_matched_anchors
         else:
             return y_encoded
@@ -597,7 +599,7 @@ class SSDInputEncoder:
         # 4: Create a tensor to contain the variances. This tensor has the same shape as `boxes_tensor` and simply
         #    contains the same 4 variance values for every position in the last axis.
         variances_tensor = np.zeros_like(boxes_tensor)
-        variances_tensor += self.variances # Long live broadcasting
+        variances_tensor += self.variances  # Long live broadcasting
 
         # 4: Concatenate the classes, boxes and variances tensors to get our final template for y_encoded. We also need
         #    another tensor of the shape of `boxes_tensor` as a space filler so that `y_encoding_template` has the same

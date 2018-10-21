@@ -24,6 +24,7 @@ from keras.engine.topology import Layer
 
 from bounding_box_utils.bounding_box_utils import convert_coordinates
 
+
 class AnchorBoxes(Layer):
     '''
     A Keras layer to create an output tensor containing anchor box coordinates
@@ -170,7 +171,7 @@ class AnchorBoxes(Layer):
         # We need the shape of the input tensor
         if K.image_dim_ordering() == 'tf':
             batch_size, feature_map_height, feature_map_width, feature_map_channels = x._keras_shape
-        else: # Not yet relevant since TensorFlow is the only supported backend right now, but it can't harm to have this in here for the future
+        else:  # Not yet relevant since TensorFlow is the only supported backend right now, but it can't harm to have this in here for the future
             batch_size, feature_map_channels, feature_map_height, feature_map_width = x._keras_shape
 
         # Compute the grid of box center points. They are identical for all aspect ratios.
@@ -201,31 +202,31 @@ class AnchorBoxes(Layer):
         cy = np.linspace(offset_height * step_height, (offset_height + feature_map_height - 1) * step_height, feature_map_height)
         cx = np.linspace(offset_width * step_width, (offset_width + feature_map_width - 1) * step_width, feature_map_width)
         cx_grid, cy_grid = np.meshgrid(cx, cy)
-        cx_grid = np.expand_dims(cx_grid, -1) # This is necessary for np.tile() to do what we want further down
-        cy_grid = np.expand_dims(cy_grid, -1) # This is necessary for np.tile() to do what we want further down
+        cx_grid = np.expand_dims(cx_grid, -1)  # This is necessary for np.tile() to do what we want further down
+        cy_grid = np.expand_dims(cy_grid, -1)  # This is necessary for np.tile() to do what we want further down
 
         # Create a 4D tensor template of shape `(feature_map_height, feature_map_width, n_boxes, 4)`
         # where the last dimension will contain `(cx, cy, w, h)`
         boxes_tensor = np.zeros((feature_map_height, feature_map_width, self.n_boxes, 4))
 
-        boxes_tensor[:, :, :, 0] = np.tile(cx_grid, (1, 1, self.n_boxes)) # Set cx
-        boxes_tensor[:, :, :, 1] = np.tile(cy_grid, (1, 1, self.n_boxes)) # Set cy
-        boxes_tensor[:, :, :, 2] = wh_list[:, 0] # Set w
-        boxes_tensor[:, :, :, 3] = wh_list[:, 1] # Set h
+        boxes_tensor[:, :, :, 0] = np.tile(cx_grid, (1, 1, self.n_boxes))  # Set cx
+        boxes_tensor[:, :, :, 1] = np.tile(cy_grid, (1, 1, self.n_boxes))  # Set cy
+        boxes_tensor[:, :, :, 2] = wh_list[:, 0]  # Set w
+        boxes_tensor[:, :, :, 3] = wh_list[:, 1]  # Set h
 
         # Convert `(cx, cy, w, h)` to `(xmin, xmax, ymin, ymax)`
         boxes_tensor = convert_coordinates(boxes_tensor, start_index=0, conversion='centroids2corners')
 
         # If `clip_boxes` is enabled, clip the coordinates to lie within the image boundaries
         if self.clip_boxes:
-            x_coords = boxes_tensor[:,:,:,[0, 2]]
+            x_coords = boxes_tensor[:, :, :, [0, 2]]
             x_coords[x_coords >= self.img_width] = self.img_width - 1
             x_coords[x_coords < 0] = 0
-            boxes_tensor[:,:,:,[0, 2]] = x_coords
-            y_coords = boxes_tensor[:,:,:,[1, 3]]
+            boxes_tensor[:, :, :, [0, 2]] = x_coords
+            y_coords = boxes_tensor[:, :, :, [1, 3]]
             y_coords[y_coords >= self.img_height] = self.img_height - 1
             y_coords[y_coords < 0] = 0
-            boxes_tensor[:,:,:,[1, 3]] = y_coords
+            boxes_tensor[:, :, :, [1, 3]] = y_coords
 
         # If `normalize_coords` is enabled, normalize the coordinates to be within [0,1]
         if self.normalize_coords:
@@ -242,8 +243,8 @@ class AnchorBoxes(Layer):
 
         # Create a tensor to contain the variances and append it to `boxes_tensor`. This tensor has the same shape
         # as `boxes_tensor` and simply contains the same 4 variance values for every position in the last axis.
-        variances_tensor = np.zeros_like(boxes_tensor) # Has shape `(feature_map_height, feature_map_width, n_boxes, 4)`
-        variances_tensor += self.variances # Long live broadcasting
+        variances_tensor = np.zeros_like(boxes_tensor)  # Has shape `(feature_map_height, feature_map_width, n_boxes, 4)`
+        variances_tensor += self.variances  # Long live broadcasting
         # Now `boxes_tensor` becomes a tensor of shape `(feature_map_height, feature_map_width, n_boxes, 8)`
         boxes_tensor = np.concatenate((boxes_tensor, variances_tensor), axis=-1)
 
@@ -257,7 +258,7 @@ class AnchorBoxes(Layer):
     def compute_output_shape(self, input_shape):
         if K.image_dim_ordering() == 'tf':
             batch_size, feature_map_height, feature_map_width, feature_map_channels = input_shape
-        else: # Not yet relevant since TensorFlow is the only supported backend right now, but it can't harm to have this in here for the future
+        else:  # Not yet relevant since TensorFlow is the only supported backend right now, but it can't harm to have this in here for the future
             batch_size, feature_map_channels, feature_map_height, feature_map_width = input_shape
         return (batch_size, feature_map_height, feature_map_width, self.n_boxes, 8)
 

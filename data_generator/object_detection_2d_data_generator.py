@@ -49,6 +49,7 @@ except ImportError:
 from ssd_encoder_decoder.ssd_input_encoder import SSDInputEncoder
 from data_generator.object_detection_2d_image_boxes_validation_utils import BoxFilter
 
+
 class DegenerateBatchError(Exception):
     '''
     An exception class to be raised if a generated batch ends up being degenerate,
@@ -56,12 +57,14 @@ class DegenerateBatchError(Exception):
     '''
     pass
 
+
 class DatasetError(Exception):
     '''
     An exception class to be raised if a anything is wrong with the dataset,
     in particular if you try to generate batches when no dataset was loaded.
     '''
     pass
+
 
 class DataGenerator:
     '''
@@ -136,20 +139,20 @@ class DataGenerator:
                 take a bit longer.
         '''
         self.labels_output_format = labels_output_format
-        self.labels_format={'class_id': labels_output_format.index('class_id'),
-                            'xmin': labels_output_format.index('xmin'),
-                            'ymin': labels_output_format.index('ymin'),
-                            'xmax': labels_output_format.index('xmax'),
-                            'ymax': labels_output_format.index('ymax')} # This dictionary is for internal use.
+        self.labels_format = {'class_id': labels_output_format.index('class_id'),
+                              'xmin': labels_output_format.index('xmin'),
+                              'ymin': labels_output_format.index('ymin'),
+                              'xmax': labels_output_format.index('xmax'),
+                              'ymax': labels_output_format.index('ymax')}  # This dictionary is for internal use.
 
-        self.dataset_size = 0 # As long as we haven't loaded anything yet, the dataset size is zero.
+        self.dataset_size = 0  # As long as we haven't loaded anything yet, the dataset size is zero.
         self.load_images_into_memory = load_images_into_memory
-        self.images = None # The only way that this list will not stay `None` is if `load_images_into_memory == True`.
+        self.images = None  # The only way that this list will not stay `None` is if `load_images_into_memory == True`.
 
         # `self.filenames` is a list containing all file names of the image samples (full paths).
         # Note that it does not contain the actual image files themselves. This list is one of the outputs of the parser methods.
         # In case you are loading an HDF5 dataset, this list will be `None`.
-        if not filenames is None:
+        if filenames is not None:
             if isinstance(filenames, (list, tuple)):
                 self.filenames = filenames
             elif isinstance(filenames, str):
@@ -243,24 +246,30 @@ class DataGenerator:
             self.labels = []
             labels = self.hdf5_dataset['labels']
             label_shapes = self.hdf5_dataset['label_shapes']
-            if verbose: tr = trange(self.dataset_size, desc='Loading labels', file=sys.stdout)
-            else: tr = range(self.dataset_size)
+            if verbose:
+              tr = trange(self.dataset_size, desc='Loading labels', file=sys.stdout)
+            else:
+              tr = range(self.dataset_size)
             for i in tr:
                 self.labels.append(labels[i].reshape(label_shapes[i]))
 
         if self.hdf5_dataset.attrs['has_image_ids']:
             self.image_ids = []
             image_ids = self.hdf5_dataset['image_ids']
-            if verbose: tr = trange(self.dataset_size, desc='Loading image IDs', file=sys.stdout)
-            else: tr = range(self.dataset_size)
+            if verbose:
+              tr = trange(self.dataset_size, desc='Loading image IDs', file=sys.stdout)
+            else:
+              tr = range(self.dataset_size)
             for i in tr:
                 self.image_ids.append(image_ids[i])
 
         if self.hdf5_dataset.attrs['has_eval_neutral']:
             self.eval_neutral = []
             eval_neutral = self.hdf5_dataset['eval_neutral']
-            if verbose: tr = trange(self.dataset_size, desc='Loading evaluation-neutrality annotations', file=sys.stdout)
-            else: tr = range(self.dataset_size)
+            if verbose:
+              tr = trange(self.dataset_size, desc='Loading evaluation-neutrality annotations', file=sys.stdout)
+            else:
+              tr = range(self.dataset_size)
             for i in tr:
                 self.eval_neutral.append(eval_neutral[i])
 
@@ -324,32 +333,32 @@ class DataGenerator:
 
         with open(self.labels_filename, newline='') as csvfile:
             csvread = csv.reader(csvfile, delimiter=',')
-            next(csvread) # Skip the header row.
-            for row in csvread: # For every line (i.e for every bounding box) in the CSV file...
-                if self.include_classes == 'all' or int(row[self.input_format.index('class_id')].strip()) in self.include_classes: # If the class_id is among the classes that are to be included in the dataset...
-                    box = [] # Store the box class and coordinates here
-                    box.append(row[self.input_format.index('image_name')].strip()) # Select the image name column in the input format and append its content to `box`
-                    for element in self.labels_output_format: # For each element in the output format (where the elements are the class ID and the four box coordinates)...
-                        box.append(int(row[self.input_format.index(element)].strip())) # ...select the respective column in the input format and append it to `box`.
+            next(csvread)  # Skip the header row.
+            for row in csvread:  # For every line (i.e for every bounding box) in the CSV file...
+                if self.include_classes == 'all' or int(row[self.input_format.index('class_id')].strip()) in self.include_classes:  # If the class_id is among the classes that are to be included in the dataset...
+                    box = []  # Store the box class and coordinates here
+                    box.append(row[self.input_format.index('image_name')].strip())  # Select the image name column in the input format and append its content to `box`
+                    for element in self.labels_output_format:  # For each element in the output format (where the elements are the class ID and the four box coordinates)...
+                        box.append(int(row[self.input_format.index(element)].strip()))  # ...select the respective column in the input format and append it to `box`.
                     data.append(box)
 
-        data = sorted(data) # The data needs to be sorted, otherwise the next step won't give the correct result
+        data = sorted(data)  # The data needs to be sorted, otherwise the next step won't give the correct result
 
         # Now that we've made sure that the data is sorted by file names,
         # we can compile the actual samples and labels lists
 
-        current_file = data[0][0] # The current image for which we're collecting the ground truth boxes
-        current_image_id = data[0][0].split('.')[0] # The image ID will be the portion of the image name before the first dot.
-        current_labels = [] # The list where we collect all ground truth boxes for a given image
+        current_file = data[0][0]  # The current image for which we're collecting the ground truth boxes
+        current_image_id = data[0][0].split('.')[0]  # The image ID will be the portion of the image name before the first dot.
+        current_labels = []  # The list where we collect all ground truth boxes for a given image
         add_to_dataset = False
         for i, box in enumerate(data):
 
-            if box[0] == current_file: # If this box (i.e. this line of the CSV file) belongs to the current image file
+            if box[0] == current_file:  # If this box (i.e. this line of the CSV file) belongs to the current image file
                 current_labels.append(box[1:])
-                if i == len(data)-1: # If this is the last line of the CSV file
-                    if random_sample: # In case we're not using the full dataset, but a random sample of it.
-                        p = np.random.uniform(0,1)
-                        if p >= (1-random_sample):
+                if i == len(data) - 1:  # If this is the last line of the CSV file
+                    if random_sample:  # In case we're not using the full dataset, but a random sample of it.
+                        p = np.random.uniform(0, 1)
+                        if p >= (1 - random_sample):
                             self.labels.append(np.stack(current_labels, axis=0))
                             self.filenames.append(os.path.join(self.images_dir, current_file))
                             self.image_ids.append(current_image_id)
@@ -357,10 +366,10 @@ class DataGenerator:
                         self.labels.append(np.stack(current_labels, axis=0))
                         self.filenames.append(os.path.join(self.images_dir, current_file))
                         self.image_ids.append(current_image_id)
-            else: # If this box belongs to a new image file
-                if random_sample: # In case we're not using the full dataset, but a random sample of it.
-                    p = np.random.uniform(0,1)
-                    if p >= (1-random_sample):
+            else:  # If this box belongs to a new image file
+                if random_sample:  # In case we're not using the full dataset, but a random sample of it.
+                    p = np.random.uniform(0, 1)
+                    if p >= (1 - random_sample):
                         self.labels.append(np.stack(current_labels, axis=0))
                         self.filenames.append(os.path.join(self.images_dir, current_file))
                         self.image_ids.append(current_image_id)
@@ -368,14 +377,14 @@ class DataGenerator:
                     self.labels.append(np.stack(current_labels, axis=0))
                     self.filenames.append(os.path.join(self.images_dir, current_file))
                     self.image_ids.append(current_image_id)
-                current_labels = [] # Reset the labels list because this is a new file.
+                current_labels = []  # Reset the labels list because this is a new file.
                 current_file = box[0]
                 current_image_id = box[0].split('.')[0]
                 current_labels.append(box[1:])
-                if i == len(data)-1: # If this is the last line of the CSV file
-                    if random_sample: # In case we're not using the full dataset, but a random sample of it.
-                        p = np.random.uniform(0,1)
-                        if p >= (1-random_sample):
+                if i == len(data) - 1:  # If this is the last line of the CSV file
+                    if random_sample:  # In case we're not using the full dataset, but a random sample of it.
+                        p = np.random.uniform(0, 1)
+                        if p >= (1 - random_sample):
                             self.labels.append(np.stack(current_labels, axis=0))
                             self.filenames.append(os.path.join(self.images_dir, current_file))
                             self.image_ids.append(current_image_id)
@@ -388,13 +397,15 @@ class DataGenerator:
         self.dataset_indices = np.arange(self.dataset_size, dtype=np.int32)
         if self.load_images_into_memory:
             self.images = []
-            if verbose: it = tqdm(self.filenames, desc='Loading images into memory', file=sys.stdout)
-            else: it = self.filenames
+            if verbose:
+              it = tqdm(self.filenames, desc='Loading images into memory', file=sys.stdout)
+            else:
+              it = self.filenames
             for filename in it:
                 with Image.open(filename) as image:
                     self.images.append(np.array(image, dtype=np.uint8))
 
-        if ret: # In case we want to return these
+        if ret:  # In case we want to return these
             return self.images, self.filenames, self.labels, self.image_ids
 
     def parse_xml(self,
@@ -407,7 +418,7 @@ class DataGenerator:
                            'chair', 'cow', 'diningtable', 'dog',
                            'horse', 'motorbike', 'person', 'pottedplant',
                            'sheep', 'sofa', 'train', 'tvmonitor'],
-                  include_classes = 'all',
+                  include_classes='all',
                   exclude_truncated=False,
                   exclude_difficult=False,
                   ret=False,
@@ -655,8 +666,10 @@ class DataGenerator:
         self.dataset_indices = np.arange(self.dataset_size, dtype=np.int32)
         if self.load_images_into_memory:
             self.images = []
-            if verbose: it = tqdm(self.filenames, desc='Loading images into memory', file=sys.stdout)
-            else: it = self.filenames
+            if verbose:
+              it = tqdm(self.filenames, desc='Loading images into memory', file=sys.stdout)
+            else:
+              it = self.filenames
             for filename in it:
                 with Image.open(filename) as image:
                     self.images.append(np.array(image, dtype=np.uint8))
@@ -792,7 +805,7 @@ class DataGenerator:
                     if image.shape[2] == 1:
                         image = np.concatenate([image] * 3, axis=-1)
                     elif image.shape[2] == 4:
-                        image = image[:,:,:3]
+                        image = image[:, :, :3]
 
                 if resize:
                     image = cv2.resize(image, dsize=(resize[1], resize[0]))
@@ -825,7 +838,7 @@ class DataGenerator:
         self.hdf5_dataset = h5py.File(file_path, 'r')
         self.hdf5_dataset_path = file_path
         self.dataset_size = len(self.hdf5_dataset['images'])
-        self.dataset_indices = np.arange(self.dataset_size, dtype=np.int32) # Instead of shuffling the HDF5 dataset, we will shuffle this index list.
+        self.dataset_indices = np.arange(self.dataset_size, dtype=np.int32)  # Instead of shuffling the HDF5 dataset, we will shuffle this index list.
 
     def generate(self,
                  batch_size=32,
@@ -1018,7 +1031,7 @@ class DataGenerator:
 
             # Get the labels for this batch (if there are any).
             if not (self.labels is None):
-                batch_y = deepcopy(self.labels[current:current+batch_size])
+                batch_y = deepcopy(self.labels[current:current + batch_size])
             else:
                 batch_y = None
 
@@ -1073,7 +1086,7 @@ class DataGenerator:
                             else:
                                 batch_X[i], batch_y[i] = transform(batch_X[i], batch_y[i])
 
-                            if batch_X[i] is None: # In case the transform failed to produce an output image, which is possible for some random transforms.
+                            if batch_X[i] is None:  # In case the transform failed to produce an output image, which is possible for some random transforms.
                                 batch_items_to_remove.append(i)
                                 batch_inverse_transforms.append([])
                                 continue

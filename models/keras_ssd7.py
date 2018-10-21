@@ -174,9 +174,9 @@ def build_model(image_size,
         https://arxiv.org/abs/1512.02325v5
     '''
 
-    n_predictor_layers = 4 # The number of predictor conv layers in the network
-    n_classes += 1 # Account for the background class.
-    l2_reg = l2_regularization # Make the internal name shorter.
+    n_predictor_layers = 4  # The number of predictor conv layers in the network
+    n_classes += 1  # Account for the background class.
+    l2_reg = l2_regularization  # Make the internal name shorter.
     img_height, img_width, img_channels = image_size[0], image_size[1], image_size[2]
 
     ############################################################################
@@ -192,12 +192,12 @@ def build_model(image_size,
     if (min_scale is None or max_scale is None) and scales is None:
         raise ValueError("Either `min_scale` and `max_scale` or `scales` need to be specified.")
     if scales:
-        if len(scales) != n_predictor_layers+1:
-            raise ValueError("It must be either scales is None or len(scales) == {}, but len(scales) == {}.".format(n_predictor_layers+1, len(scales)))
-    else: # If no explicit list of scaling factors was passed, compute the list of scaling factors from `min_scale` and `max_scale`
-        scales = np.linspace(min_scale, max_scale, n_predictor_layers+1)
+        if len(scales) != n_predictor_layers + 1:
+            raise ValueError("It must be either scales is None or len(scales) == {}, but len(scales) == {}.".format(n_predictor_layers + 1, len(scales)))
+    else:  # If no explicit list of scaling factors was passed, compute the list of scaling factors from `min_scale` and `max_scale`
+        scales = np.linspace(min_scale, max_scale, n_predictor_layers + 1)
 
-    if len(variances) != 4: # We need one variance value for each of the four box coordinates
+    if len(variances) != 4:  # We need one variance value for each of the four box coordinates
         raise ValueError("4 variance values must be pased, but {} values were received.".format(len(variances)))
     variances = np.array(variances)
     if np.any(variances <= 0):
@@ -225,10 +225,10 @@ def build_model(image_size,
         n_boxes = []
         for ar in aspect_ratios_per_layer:
             if (1 in ar) & two_boxes_for_ar1:
-                n_boxes.append(len(ar) + 1) # +1 for the second box for aspect ratio 1
+                n_boxes.append(len(ar) + 1)  # +1 for the second box for aspect ratio 1
             else:
                 n_boxes.append(len(ar))
-    else: # If only a global aspect ratio list was passed, then the number of boxes is the same for each predictor layer
+    else:  # If only a global aspect ratio list was passed, then the number of boxes is the same for each predictor layer
         if (1 in aspect_ratios_global) & two_boxes_for_ar1:
             n_boxes = len(aspect_ratios_global) + 1
         else:
@@ -255,9 +255,9 @@ def build_model(image_size,
 
     def input_channel_swap(tensor):
         if len(swap_channels) == 3:
-            return K.stack([tensor[...,swap_channels[0]], tensor[...,swap_channels[1]], tensor[...,swap_channels[2]]], axis=-1)
+            return K.stack([tensor[..., swap_channels[0]], tensor[..., swap_channels[1]], tensor[..., swap_channels[2]]], axis=-1)
         elif len(swap_channels) == 4:
-            return K.stack([tensor[...,swap_channels[0]], tensor[...,swap_channels[1]], tensor[...,swap_channels[2]], tensor[...,swap_channels[3]]], axis=-1)
+            return K.stack([tensor[..., swap_channels[0]], tensor[..., swap_channels[1]], tensor[..., swap_channels[2]], tensor[..., swap_channels[3]]], axis=-1)
 
     ############################################################################
     # Build the network.
@@ -275,7 +275,7 @@ def build_model(image_size,
         x1 = Lambda(input_channel_swap, output_shape=(img_height, img_width, img_channels), name='input_channel_swap')(x1)
 
     conv1 = Conv2D(32, (5, 5), strides=(1, 1), padding="same", kernel_initializer='he_normal', kernel_regularizer=l2(l2_reg), name='conv1')(x1)
-    conv1 = BatchNormalization(axis=3, momentum=0.99, name='bn1')(conv1) # Tensorflow uses filter format [filter_height, filter_width, in_channels, out_channels], hence axis = 3
+    conv1 = BatchNormalization(axis=3, momentum=0.99, name='bn1')(conv1)  # Tensorflow uses filter format [filter_height, filter_width, in_channels, out_channels], hence axis = 3
     conv1 = ELU(name='elu1')(conv1)
     pool1 = MaxPooling2D(pool_size=(2, 2), name='pool1')(conv1)
 

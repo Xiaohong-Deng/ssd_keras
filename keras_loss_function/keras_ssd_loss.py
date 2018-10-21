@@ -19,6 +19,7 @@ limitations under the License.
 from __future__ import division
 import tensorflow as tf
 
+
 class SSDLoss:
     '''
     The SSD loss, see https://arxiv.org/abs/1512.02325.
@@ -116,7 +117,7 @@ class SSDLoss:
             y_pred (Keras tensor): The model prediction. The shape is identical
                 to that of `y_true`, i.e. `(batch_size, #boxes, #classes + 12)`.
                 The last axis must contain entries in the format
-                `[classes one-hot encoded, 4 predicted box coordinate offsets, 8 arbitrary entries]`.
+                `[classes softmax encoded, 4 predicted box coordinate offsets, 8 arbitrary entries]`.
 
         Returns:
             A scalar, the total multitask loss for classification and localization.
@@ -125,19 +126,19 @@ class SSDLoss:
         self.n_neg_min = tf.constant(self.n_neg_min)
         self.alpha = tf.constant(self.alpha)
 
-        batch_size = tf.shape(y_pred)[0] # Output dtype: tf.int32
-        n_boxes = tf.shape(y_pred)[1] # Output dtype: tf.int32, note that `n_boxes` in this context denotes the total number of boxes per image, not the number of boxes per cell.
+        batch_size = tf.shape(y_pred)[0]  # Output dtype: tf.int32
+        n_boxes = tf.shape(y_pred)[1]  # Output dtype: tf.int32, note that `n_boxes` in this context denotes the total number of boxes per image, not the number of boxes per cell.
 
         # 1: Compute the losses for class and box predictions for every box.
 
-        classification_loss = tf.to_float(self.log_loss(y_true[:,:,:-12], y_pred[:,:,:-12])) # Output shape: (batch_size, n_boxes)
-        localization_loss = tf.to_float(self.smooth_L1_loss(y_true[:,:,-12:-8], y_pred[:,:,-12:-8])) # Output shape: (batch_size, n_boxes)
+        classification_loss = tf.to_float(self.log_loss(y_true[:, :, :-12], y_pred[:, :, :-12]))  # Output shape: (batch_size, n_boxes)
+        localization_loss = tf.to_float(self.smooth_L1_loss(y_true[:, :, -12:-8], y_pred[:, :, -12:-8]))  # Output shape: (batch_size, n_boxes)
 
         # 2: Compute the classification losses for the positive and negative targets.
 
         # Create masks for the positive and negative ground truth classes.
-        negatives = y_true[:,:,0] # Tensor of shape (batch_size, n_boxes)
-        positives = tf.to_float(tf.reduce_max(y_true[:,:,1:-12], axis=-1)) # Tensor of shape (batch_size, n_boxes)
+        negatives = y_true[:, :, 0]  # Tensor of shape (batch_size, n_boxes)
+        positives = tf.to_float(tf.reduce_max(y_true[:, :, 1:-12], axis=-1))  # Tensor of shape (batch_size, n_boxes)
 
         # Count the number of positive boxes (classes 1 to n) in y_true across the whole batch.
         n_positive = tf.reduce_sum(positives)
@@ -145,13 +146,13 @@ class SSDLoss:
         # Now mask all negative boxes and sum up the losses for the positive boxes PER batch item
         # (Keras loss functions must output one scalar loss value PER batch item, rather than just
         # one scalar for the entire batch, that's why we're not summing across all axes).
-        pos_class_loss = tf.reduce_sum(classification_loss * positives, axis=-1) # Tensor of shape (batch_size,)
+        pos_class_loss = tf.reduce_sum(classification_loss * positives, axis=-1)  # Tensor of shape (batch_size,)
 
         # Compute the classification loss for the negative default boxes (if there are any).
 
         # First, compute the classification loss for all negative boxes.
-        neg_class_loss_all = classification_loss * negatives # Tensor of shape (batch_size, n_boxes)
-        n_neg_losses = tf.count_nonzero(neg_class_loss_all, dtype=tf.int32) # The number of non-zero loss entries in `neg_class_loss_all`
+        neg_class_loss_all = classification_loss * negatives  # Tensor of shape (batch_size, n_boxes)
+        n_neg_losses = tf.count_nonzero(neg_class_loss_all, dtype=tf.int32)  # The number of non-zero loss entries in `neg_class_loss_all`
         # What's the point of `n_neg_losses`? For the next step, which will be to compute which negative boxes enter the classification
         # loss, we don't just want to know how many negative ground truth boxes there are, but for how many of those there actually is
         # a positive (i.e. non-zero) loss. This is necessary because `tf.nn.top-k()` in the function below will pick the top k boxes with

@@ -28,6 +28,7 @@ from keras_layers.keras_layer_L2Normalization import L2Normalization
 from keras_layers.keras_layer_DecodeDetections import DecodeDetections
 from keras_layers.keras_layer_DecodeDetectionsFast import DecodeDetectionsFast
 
+
 def ssd_300(image_size,
             n_classes,
             mode='training',
@@ -171,9 +172,9 @@ def ssd_300(image_size,
         https://arxiv.org/abs/1512.02325v5
     '''
 
-    n_predictor_layers = 6 # The number of predictor conv layers in the network is 6 for the original SSD300.
-    n_classes += 1 # Account for the background class.
-    l2_reg = l2_regularization # Make the internal name shorter.
+    n_predictor_layers = 6  # The number of predictor conv layers in the network is 6 for the original SSD300.
+    n_classes += 1  # Account for the background class.
+    l2_reg = l2_regularization  # Make the internal name shorter.
     img_height, img_width, img_channels = image_size[0], image_size[1], image_size[2]
 
     ############################################################################
@@ -189,10 +190,10 @@ def ssd_300(image_size,
     if (min_scale is None or max_scale is None) and scales is None:
         raise ValueError("Either `min_scale` and `max_scale` or `scales` need to be specified.")
     if scales:
-        if len(scales) != n_predictor_layers+1:
-            raise ValueError("It must be either scales is None or len(scales) == {}, but len(scales) == {}.".format(n_predictor_layers+1, len(scales)))
-    else: # If no explicit list of scaling factors was passed, compute the list of scaling factors from `min_scale` and `max_scale`
-        scales = np.linspace(min_scale, max_scale, n_predictor_layers+1)
+        if len(scales) != n_predictor_layers + 1:
+            raise ValueError("It must be either scales is None or len(scales) == {}, but len(scales) == {}.".format(n_predictor_layers + 1, len(scales)))
+    else:  # If no explicit list of scaling factors was passed, compute the list of scaling factors from `min_scale` and `max_scale`
+        scales = np.linspace(min_scale, max_scale, n_predictor_layers + 1)
 
     if len(variances) != 4:
         raise ValueError("4 variance values must be pased, but {} values were received.".format(len(variances)))
@@ -222,10 +223,10 @@ def ssd_300(image_size,
         n_boxes = []
         for ar in aspect_ratios_per_layer:
             if (1 in ar) & two_boxes_for_ar1:
-                n_boxes.append(len(ar) + 1) # +1 for the second box for aspect ratio 1
+                n_boxes.append(len(ar) + 1)  # +1 for the second box for aspect ratio 1
             else:
                 n_boxes.append(len(ar))
-    else: # If only a global aspect ratio list was passed, then the number of boxes is the same for each predictor layer
+    else:  # If only a global aspect ratio list was passed, then the number of boxes is the same for each predictor layer
         if (1 in aspect_ratios_global) & two_boxes_for_ar1:
             n_boxes = len(aspect_ratios_global) + 1
         else:
